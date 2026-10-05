@@ -3,3 +3,17 @@
 
 # env files
 .env*
+
+# Docker related files
+Dockerfile
+.dockerignore
+
+# git files
+.gitignore
+
+# db, python and project related files
+db.sqlite3
+**/__pycache__
+README.md
+project-logo.png
+
