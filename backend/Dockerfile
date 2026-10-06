@@ -1,6 +1,5 @@
 FROM python:3.5-slim AS builder
 WORKDIR /app
-
 COPY requirements.txt .
 RUN pip install --prefix=/install -r requirements.txt
 

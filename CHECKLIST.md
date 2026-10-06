@@ -17,8 +17,9 @@ the git history.
 
 - [ ] Base image fits the technology stack (backend: `python:3.5-slim`; frontend missing)
 - [ ] Required environment variables configured inside the Dockerfiles
+      (backend: `PYTHONUNBUFFERED`, `PYTHONDONTWRITEBYTECODE`; frontend missing)
 - [ ] Container port exposed (backend: 8000; frontend missing)
-- [ ] Multi-stage build to keep the image small (backend: 214 MB instead of ~900 MB)
+- [ ] Multi-stage build to keep the image small (backend: 51 MB on `linux/amd64`)
 
 ### .dockerignore
 
@@ -63,6 +64,7 @@ the git history.
 - [x] Default values where they make sense (`DEBUG=False`, `DJANGO_LOG_LEVEL=INFO`;
       no default for `SECRET_KEY` on purpose, so the app fails fast)
 - [x] Critical configuration passed in via `.env`, never committed
+      (`SECRET_KEY` and `POSTGRES_PASSWORD` are mandatory and have no default)
 
 ### Testing
 
