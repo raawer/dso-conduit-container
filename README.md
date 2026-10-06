@@ -32,8 +32,13 @@ All configuration is passed to the containers via environment variables. Copy `e
 | `SECRET_KEY`    | yes      | –       | Django secret key used for cryptographic signing. Generate a new random value for every setup. |
 | `DEBUG`         | no       | `false` | Enables Django debug mode when set to `true`. Must be `false` on any publicly reachable host.   |
 | `ALLOWED_HOSTS` | yes*     | –       | Comma-separated list of host names or IPs the backend responds to, e.g. `localhost,127.0.0.1`. |
+| `DJANGO_LOG_LEVEL` | no    | `INFO`  | Log level for Django's output on stdout. Keep `INFO` in normal operation: on `DEBUG` every SQL statement is logged, including the values it carries. |
 
 \* Required when `DEBUG` is `false`.
+
+The backend logs to stdout, so container logs are read with `docker logs <container>`
+and can be written to a file with `docker logs <container> > logs.txt`. Errors are
+logged regardless of the `DEBUG` setting.
 
 Generate a secret key:
 
