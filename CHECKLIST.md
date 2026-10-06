@@ -10,7 +10,7 @@ the git history.
 
 - [x] `.gitignore` excludes everything irrelevant from the repository
 - [ ] A Dockerfile for both backend and frontend (backend done, frontend missing)
-- [ ] `docker-compose.yaml`
+- [x] `docker-compose.yaml`
 - [ ] `README.md` according to the criteria below
 
 ### Dockerfiles
@@ -29,16 +29,19 @@ the git history.
 ### docker-compose.yaml
 
 - [ ] Services defined and configured: frontend, backend, database (Postgres)
-- [ ] Environment configuration for both services (non-critical variables only)
-- [ ] Port mappings so the containers are reachable
-- [ ] Volume configuration so data survives container restarts
+      (db and backend done, frontend missing)
+- [x] Environment configuration for both services (non-critical variables only)
+- [x] Port mappings so the containers are reachable (backend on 8000; the database
+      is deliberately not published)
+- [x] Volume configuration so data survives container restarts (named volume
+      `postgres_data`)
 
 ### README.md
 
 - [x] Table of contents
 - [x] Description of the repository: contents and purpose
-- [ ] "Quickstart" section with prerequisites and short instructions
-- [ ] "Usage" section covering configuration and how to modify it
+- [x] "Quickstart" section with prerequisites and short instructions
+- [ ] "Usage" section covering configuration and how to modify it (frontend missing)
 
 ## 2. Documentation
 
@@ -60,7 +63,7 @@ the git history.
 ### Code conventions
 
 - [x] `UPPER_CASE_WITH_UNDERSCORE` for build args, environment and shell variables
-- [ ] `${SOME_VAR}` notation used for variable references
+- [x] `${SOME_VAR}` notation used for variable references
 - [x] Default values where they make sense (`DEBUG=False`, `DJANGO_LOG_LEVEL=INFO`;
       no default for `SECRET_KEY` on purpose, so the app fails fast)
 - [x] Critical configuration passed in via `.env`, never committed
@@ -70,7 +73,7 @@ the git history.
 
 - [ ] Frontend reachable on the cloud VM on port 8282
 - [x] Entrypoint starts a WSGI application, not a dev server (`gunicorn conduit.wsgi:application`)
-- [ ] Services restart automatically after a failure
+- [x] Services restart automatically after a failure (`restart: always`)
 - [ ] The application can be navigated and loads data everywhere
-- [ ] Logs can be read via CLI and written to a file
+- [x] Logs can be read via CLI and written to a file
       (`docker logs <container> > logs.txt`; Django logs to stdout, unbuffered)

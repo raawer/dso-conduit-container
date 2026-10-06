@@ -9,17 +9,34 @@ This repository contains the Conduit application, an Angular frontend and a Djan
   - [Run](#run)
 - [Usage](#usage)
   - [Configuration](#configuration)
+  - [Platform](#platform)
+  - [Services](#services)
   - [Customization](#customization)
 
 ## Quickstart
 
 ### Prerequisites
 
-<!-- TODO: list required tools and versions (Docker, Docker Compose) -->
+- Docker Engine with the Compose plugin (`docker compose version`)
 
 ### Run
 
-<!-- TODO: minimal steps once docker-compose.yaml exists: clone, copy example.env to .env, docker compose up -->
+```bash
+cp example.env .env          # then set SECRET_KEY and POSTGRES_PASSWORD
+docker compose up --build
+```
+
+The backend is available at <http://localhost:8000/api/articles>. The database schema is
+created automatically on the first start, so no manual migration step is needed.
+
+Generate a secret key:
+
+```bash
+python3 -c "import secrets; print(secrets.token_urlsafe(50))"
+```
+
+Stop the stack with `docker compose down`, or with `docker compose down -v` to delete
+the database volume as well.
 
 ## Usage
 
@@ -48,12 +65,6 @@ The backend logs to stdout, so container logs are read with `docker logs <contai
 and can be written to a file with `docker logs <container> > logs.txt`. Errors are
 logged regardless of the `DEBUG` setting.
 
-Generate a secret key:
-
-```bash
-python3 -c "import secrets; print(secrets.token_urlsafe(50))"
-```
-
 <!-- TODO: add frontend variables once the frontend image exists -->
 
 ### Platform
@@ -73,6 +84,27 @@ Python 3.5 and Debian Buster have both reached end of life, so the base image re
 no security updates. This is accepted here because the application is pinned to
 Django 1.10; a real deployment would upgrade the stack first.
 
+### Services
+
+| Service   | Image / build | Published port | Notes |
+| --------- | ------------- | -------------- | ----- |
+| `db`      | `postgres:17` | none           | Only reachable from inside the Compose network. Data lives in the named volume `postgres_data`. |
+| `backend` | `./backend`   | `8000`         | Waits for the database to report healthy, applies migrations, then serves the app with gunicorn. |
+
+Both services use `restart: always`, so a container that exits because of an error is
+started again.
+
 ### Customization
 
-<!-- TODO: explain how to change ports, hosts and volumes in docker-compose.yaml -->
+- **Change the published backend port:** edit the left-hand side of `"8000:8000"` under
+  `backend.ports`. The right-hand side is the port inside the container and must stay in
+  sync with `EXPOSE` and the `--bind` argument in the Dockerfile.
+- **Expose the database for a GUI client:** add a `ports` entry to the `db` service, for
+  example `"5432:5432"`. Do this for local debugging only, never on a public host.
+- **Use a different PostgreSQL version:** change the tag of the `db` image. Major versions
+  have incompatible data directories, so remove the volume (`docker compose down -v`)
+  or migrate the data before switching.
+- **Keep data across restarts:** the `postgres_data` volume survives `docker compose down`.
+  Only `docker compose down -v` deletes it.
+- **Run management commands:** `docker compose exec backend python manage.py <command>`,
+  e.g. `createsuperuser`.

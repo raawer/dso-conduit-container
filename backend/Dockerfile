@@ -11,6 +11,8 @@ RUN groupadd --gid 10001 appgroup \
 WORKDIR /app
 COPY --from=builder /install /usr/local
 COPY . .
+RUN chmod +x /app/entrypoint.sh
 EXPOSE 8000
 USER appuser
+ENTRYPOINT ["/app/entrypoint.sh"]
 CMD [ "gunicorn", "conduit.wsgi:application", "--bind", "0.0.0.0:8000" ]
