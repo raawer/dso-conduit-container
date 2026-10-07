@@ -9,30 +9,33 @@ the git history.
 ### Files
 
 - [x] `.gitignore` excludes everything irrelevant from the repository
-- [ ] A Dockerfile for both backend and frontend (backend done, frontend missing)
+- [x] A Dockerfile for both backend and frontend
 - [x] `docker-compose.yaml`
-- [ ] `README.md` according to the criteria below
+- [x] `README.md` according to the criteria below
 
 ### Dockerfiles
 
-- [ ] Base image fits the technology stack (backend: `python:3.5-slim`; frontend missing)
-- [ ] Required environment variables configured inside the Dockerfiles
-      (backend: `PYTHONUNBUFFERED`, `PYTHONDONTWRITEBYTECODE`; frontend missing)
-- [ ] Container port exposed (backend: 8000; frontend missing)
-- [ ] Multi-stage build to keep the image small (backend: 51 MB on `linux/amd64`)
+- [x] Base image fits the technology stack (backend: `python:3.5-slim`,
+      frontend: `node:20-alpine` for the build and `nginx:alpine` to serve)
+- [x] Required environment variables configured inside the Dockerfiles
+      (backend: `PYTHONUNBUFFERED`, `PYTHONDONTWRITEBYTECODE`;
+      frontend: `BACKEND_HOST`, `BACKEND_PORT`, `NGINX_ENVSUBST_FILTER`)
+- [x] Container port exposed (backend: 8000, frontend: 80)
+- [x] Multi-stage build to keep the image small (backend: 51 MB; frontend: 94 MB,
+      with 327 MB of `node_modules` left behind in the build stage)
 
 ### .dockerignore
 
-- [ ] One `.dockerignore` per build context listing what must not end up in the image
-      (backend done: db file, caches, git and docker files; frontend still incomplete)
+- [x] One `.dockerignore` per build context listing what must not end up in the image
+      (backend: db file, caches, git and docker files; frontend: `node_modules`,
+      `dist`, `.angular`, git, IDE and documentation files)
 
 ### docker-compose.yaml
 
-- [ ] Services defined and configured: frontend, backend, database (Postgres)
-      (db and backend done, frontend missing)
+- [x] Services defined and configured: frontend, backend, database (Postgres)
 - [x] Environment configuration for both services (non-critical variables only)
-- [x] Port mappings so the containers are reachable (backend on 8000; the database
-      is deliberately not published)
+- [x] Port mappings so the containers are reachable (only the frontend publishes a
+      port, 8282; backend and database stay inside the Compose network)
 - [x] Volume configuration so data survives container restarts (named volume
       `postgres_data`)
 
@@ -41,7 +44,7 @@ the git history.
 - [x] Table of contents
 - [x] Description of the repository: contents and purpose
 - [x] "Quickstart" section with prerequisites and short instructions
-- [ ] "Usage" section covering configuration and how to modify it (frontend missing)
+- [x] "Usage" section covering configuration and how to modify it
 
 ## 2. Documentation
 
@@ -74,6 +77,7 @@ the git history.
 - [ ] Frontend reachable on the cloud VM on port 8282
 - [x] Entrypoint starts a WSGI application, not a dev server (`gunicorn conduit.wsgi:application`)
 - [x] Services restart automatically after a failure (`restart: always`)
-- [ ] The application can be navigated and loads data everywhere
+- [x] The application can be navigated and loads data everywhere (verified locally:
+      sign up, create article, comments, profile)
 - [x] Logs can be read via CLI and written to a file
       (`docker logs <container> > logs.txt`; Django logs to stdout, unbuffered)

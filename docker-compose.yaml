@@ -18,10 +18,15 @@ services:
     depends_on:
       db:
         condition: service_healthy
-    ports:
-      - "8000:8000"
     restart: always
 
+  frontend:
+    build: ./frontend
+    depends_on:
+      - backend
+    ports:
+      - "8282:80"
+    restart: always
 
 volumes:
   postgres_data:
