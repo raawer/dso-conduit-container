@@ -108,8 +108,9 @@ Django 1.10; a real deployment would upgrade the stack first.
 The backend runs as an unprivileged user (uid 10001); in the frontend image the nginx
 worker processes do.
 
-All services use `restart: always`, so a container that exits because of an error is
-started again.
+All services use `restart: on-failure:5`, so a container that exits with an error is
+started again, up to five times. A container that exits cleanly stays stopped, and after
+a reboot of the host the stack is started again with `docker compose up -d`.
 
 ### Customization
 

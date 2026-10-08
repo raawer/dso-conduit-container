@@ -76,7 +76,7 @@ the git history.
 
 - [x] Frontend reachable on the cloud VM on port 8282
 - [x] Entrypoint starts a WSGI application, not a dev server (`gunicorn conduit.wsgi:application`)
-- [x] Services restart automatically after a failure (`restart: always`)
+- [x] Services restart automatically after a failure (`restart: on-failure:5`)
 - [x] The application can be navigated and loads data everywhere (verified locally:
       sign up, create article, comments, profile)
 - [x] Logs can be read via CLI and written to a file
