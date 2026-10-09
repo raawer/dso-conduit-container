@@ -3,3 +3,22 @@
 
 # env files
 .env*
+
+# dependencies and build output
+node_modules
+dist
+.angular
+
+# git and ci
+.git
+.github
+.husky
+
+# ide
+.vscode
+.idea
+
+# docs and assets not needed in the image
+*.md
+logo.png
+LICENSE
