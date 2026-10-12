@@ -12,6 +12,7 @@ This repository contains the Conduit application, an Angular frontend and a Djan
   - [Platform](#platform)
   - [Services](#services)
   - [Customization](#customization)
+- [Deployment](#deployment)
 
 ## Quickstart
 
@@ -132,3 +133,17 @@ a reboot of the host the stack is started again with `docker compose up -d`.
   Only `docker compose down -v` deletes it.
 - **Run management commands:** `docker compose exec backend python manage.py <command>`,
   e.g. `createsuperuser`.
+
+## Deployment
+
+The images are built by a GitHub Actions workflow (`.github/workflows/deployment.yaml`)
+and pushed to the GitHub Container Registry:
+
+- `ghcr.io/raawer/conduit-backend`
+- `ghcr.io/raawer/conduit-frontend`
+
+Each image is tagged with the commit SHA that produced it, and additionally with
+`latest`. The SHA tag is the one to deploy: it states exactly which source state is
+running and makes a rollback possible.
+
+<!-- TODO: deployment job (SSH), required repository secrets, how to trigger a deployment -->

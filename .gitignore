@@ -3,3 +3,9 @@
 
 # env files
 .env*
+
+# ssh keys and certificates
+id_*
+*.pem
+*.key
+*_deploy
