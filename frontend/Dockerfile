@@ -7,6 +7,7 @@ COPY . .
 RUN npm run build
 
 FROM nginx:alpine
+LABEL org.opencontainers.image.source=https://github.com/raawer/dso-conduit-container
 COPY --from=builder /app/dist/angular-conduit /usr/share/nginx/html
 ENV BACKEND_HOST=backend \
     BACKEND_PORT=8000 \
