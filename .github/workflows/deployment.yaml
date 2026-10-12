@@ -25,3 +25,11 @@ jobs:
           -t ghcr.io/raawer/conduit-backend:latest \
           ./backend
           docker push --all-tags ghcr.io/raawer/conduit-backend
+
+      - name: Build and push the frontend image
+        run: |
+          docker build \
+            -t ghcr.io/raawer/conduit-frontend:${{ github.sha }} \
+            -t ghcr.io/raawer/conduit-frontend:latest \
+            ./frontend
+          docker push --all-tags ghcr.io/raawer/conduit-frontend
