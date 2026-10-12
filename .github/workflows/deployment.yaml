@@ -1,0 +1,12 @@
+name: Deployment
+
+on:
+  push:
+    branches: [feature/deployment]
+
+jobs:
+  hello:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Say hello
+        run: echo "Workflow runs"
