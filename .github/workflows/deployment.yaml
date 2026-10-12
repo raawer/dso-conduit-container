@@ -4,6 +4,10 @@ on:
   push:
     branches: [feature/deployment]
 
+permissions:
+  contents: read
+  packages: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -11,5 +15,13 @@ jobs:
       - name: Check out the repository
         uses: actions/checkout@v7
 
-      - name: Build the backend image
-        run: docker build -t conduit-backend:test ./backend
+      - name: Log in to GHCR
+        run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+
+      - name: Build and push the backend image
+        run: |
+          docker build \
+          -t ghcr.io/raawer/conduit-backend:${{ github.sha }} \
+          -t ghcr.io/raawer/conduit-backend:latest \
+          ./backend
+          docker push --all-tags ghcr.io/raawer/conduit-backend
