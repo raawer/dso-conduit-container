@@ -33,3 +33,20 @@ jobs:
             -t ghcr.io/${{ github.repository_owner }}/conduit-frontend:latest \
             ./frontend
           docker push --all-tags ghcr.io/${{ github.repository_owner }}/conduit-frontend
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Set up the SSH key
+        run: |
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_deploy
+          chmod 600 ~/.ssh/id_deploy
+          echo "${{ secrets.SSH_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
+
+      - name: Check the connection
+        run: |
+          ssh -i ~/.ssh/id_deploy \
+            ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} \
+            "docker compose version"
