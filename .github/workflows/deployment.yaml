@@ -9,7 +9,7 @@ jobs:
     permissions:
       contents: read
       packages: write
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04   # pinned; ubuntu-latest moves to 26.04 on 2026-10-19
     steps:
       - name: Check out the repository
         uses: actions/checkout@v7
@@ -35,7 +35,7 @@ jobs:
 
   deploy:
     needs: build
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04   # pinned; ubuntu-latest moves to 26.04 on 2026-10-19
     permissions:
       contents: read
       packages: read
