@@ -80,8 +80,8 @@ preserved at the tag `conduit-container-v1.0.0`.
 
 ### Testing
 
-- [ ] Frontend reachable on the cloud VM on port 8282 (after a pipeline deployment)
+- [x] Frontend reachable on the cloud VM on port 8282 after a pipeline deployment
 - [x] Services restart automatically after a failure (`restart: on-failure:5`)
-- [ ] The application can be navigated and loads data everywhere (after a pipeline
-      deployment)
+- [x] The application can be navigated and loads data everywhere (sign up, articles,
+      comments, profile), verified after a pipeline deployment
 - [x] Logs can be read via CLI and written to a file
