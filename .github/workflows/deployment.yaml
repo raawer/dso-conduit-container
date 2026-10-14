@@ -2,8 +2,7 @@ name: Deployment
 
 on:
   push:
-    branches: [main]
-  workflow_dispatch:
+    branches: [feature/deployment]
 
 jobs:
   build:
@@ -16,23 +15,23 @@ jobs:
         uses: actions/checkout@v7
 
       - name: Log in to GHCR
-        run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+        run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
 
       - name: Build and push the backend image
         run: |
           docker build \
-            -t ghcr.io/${{ github.repository_owner }}/conduit-backend:${{ github.sha }} \
-            -t ghcr.io/${{ github.repository_owner }}/conduit-backend:latest \
+            -t "ghcr.io/${{ github.repository_owner }}/conduit-backend:${{ github.sha }}" \
+            -t "ghcr.io/${{ github.repository_owner }}/conduit-backend:latest" \
             ./backend
-          docker push --all-tags ghcr.io/${{ github.repository_owner }}/conduit-backend
+          docker push --all-tags "ghcr.io/${{ github.repository_owner }}/conduit-backend"
 
       - name: Build and push the frontend image
         run: |
           docker build \
-            -t ghcr.io/${{ github.repository_owner }}/conduit-frontend:${{ github.sha }} \
-            -t ghcr.io/${{ github.repository_owner }}/conduit-frontend:latest \
+            -t "ghcr.io/${{ github.repository_owner }}/conduit-frontend:${{ github.sha }}" \
+            -t "ghcr.io/${{ github.repository_owner }}/conduit-frontend:latest" \
             ./frontend
-          docker push --all-tags ghcr.io/${{ github.repository_owner }}/conduit-frontend
+          docker push --all-tags "ghcr.io/${{ github.repository_owner }}/conduit-frontend"
 
   deploy:
     needs: build
@@ -56,22 +55,27 @@ jobs:
 
       - name: Copy the compose file to the VM
         run: |
-          ssh -i ~/.ssh/id_deploy ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} \
+          ssh -i ~/.ssh/id_deploy "${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}" \
             "mkdir -p ${DEPLOY_PATH}"
           scp -i ~/.ssh/id_deploy docker-compose.yaml \
-            ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:${DEPLOY_PATH}/docker-compose.yaml
+            "${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:${DEPLOY_PATH}/docker-compose.yaml"
 
       - name: Log in to GHCR on the VM
         run: |
           echo "${{ secrets.GITHUB_TOKEN }}" | ssh -i ~/.ssh/id_deploy \
-            ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} \
+            "${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}" \
             "docker login ghcr.io -u ${{ github.actor }} --password-stdin"
 
       - name: Pull the images and start the stack
         run: |
-          ssh -i ~/.ssh/id_deploy ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} \
+          ssh -i ~/.ssh/id_deploy "${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}" \
             "cd ${DEPLOY_PATH} \
              && export IMAGE_TAG=${{ github.sha }} \
              && docker compose pull \
-             && docker compose up -d --no-build \
-             && docker logout ghcr.io"
+             && docker compose up -d --no-build"
+
+      - name: Log out from GHCR on the VM
+        if: always()
+        run: |
+          ssh -i ~/.ssh/id_deploy "${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}" \
+            "docker logout ghcr.io"
