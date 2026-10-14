@@ -190,7 +190,8 @@ there by hand.
 
 ### Triggering a deployment
 
-Pushing to the deployment branch runs the workflow. The images are tagged with the
+The workflow runs on every push to `main` and can also be started by hand from the
+Actions tab (`workflow_dispatch`). The images are tagged with the
 commit SHA, and the deploy job passes that SHA to Compose as `IMAGE_TAG`, so the
 containers on the VM run exactly the images built from that commit:
 
