@@ -13,6 +13,10 @@ This repository contains the Conduit application, an Angular frontend and a Djan
   - [Services](#services)
   - [Customization](#customization)
 - [Deployment](#deployment)
+  - [How a deployment runs](#how-a-deployment-runs)
+  - [Repository secrets](#repository-secrets)
+  - [Prerequisites on the VM](#prerequisites-on-the-vm)
+  - [Triggering a deployment](#triggering-a-deployment)
 
 ## Quickstart
 
@@ -146,4 +150,57 @@ Each image is tagged with the commit SHA that produced it, and additionally with
 `latest`. The SHA tag is the one to deploy: it states exactly which source state is
 running and makes a rollback possible.
 
-<!-- TODO: deployment job (SSH), required repository secrets, how to trigger a deployment -->
+### How a deployment runs
+
+The workflow has two jobs. `deploy` only starts once `build` has finished successfully,
+so a broken build never reaches the server.
+
+| Job | Runs on | What it does |
+| --- | ------- | ------------ |
+| `build`  | GitHub runner | Builds both images and pushes them to GHCR. The application is never built on the VM. |
+| `deploy` | GitHub runner, over SSH | Copies `docker-compose.yaml` to the VM, logs in to GHCR there, pulls the images of this commit and starts them in detached mode. |
+
+Every command runs over SSH and is chained with `&&`, so the first failure ends the
+step, the exit code travels back and the workflow is marked as failed.
+
+### Repository secrets
+
+| Secret | Content |
+| ------ | ------- |
+| `SSH_PRIVATE_KEY` | Private key of a key pair created for deployments only, including the `BEGIN`/`END` lines. |
+| `SSH_HOST` | Address of the target VM. |
+| `SSH_USER` | User the deployment connects as. |
+| `SSH_KNOWN_HOSTS` | Host key of the VM, obtained with `ssh-keyscan`. The workflow verifies the host key instead of disabling the check. |
+
+No registry credentials are stored: the workflow authenticates with the `GITHUB_TOKEN`
+that GitHub issues per run, passes it to the VM over standard input and logs out again
+after the deployment.
+
+### Prerequisites on the VM
+
+- Docker Engine with the Compose plugin
+- The public key of the deployment key pair in `~/.ssh/authorized_keys`
+- A directory `~/deploy/conduit` containing a `.env` file with the variables listed
+  under [Configuration](#configuration)
+
+The `.env` stays on the server and is never transferred: the only file the pipeline
+copies is `docker-compose.yaml`. Keeping it on the VM means the secrets of the running
+system are not stored in GitHub; the trade-off is that the file has to be maintained
+there by hand.
+
+### Triggering a deployment
+
+Pushing to the deployment branch runs the workflow. The images are tagged with the
+commit SHA, and the deploy job passes that SHA to Compose as `IMAGE_TAG`, so the
+containers on the VM run exactly the images built from that commit:
+
+```bash
+ssh <user>@<host> "cd deploy/conduit && docker compose ps"
+```
+
+The `IMAGE` column shows the deployed tag. To roll back, run Compose on the VM with the
+`IMAGE_TAG` of an earlier commit:
+
+```bash
+IMAGE_TAG=<older-sha> docker compose up -d --no-build
+```

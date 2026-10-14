@@ -12,7 +12,7 @@ preserved at the tag `conduit-container-v1.0.0`.
 - [x] `.gitignore` excludes everything irrelevant from the repository
 - [x] A Dockerfile for both backend and frontend
 - [x] `docker-compose.yaml`
-- [ ] `README.md` according to the criteria below (deployment section still missing)
+- [x] `README.md` according to the criteria below
 
 ### Dockerfiles
 
@@ -38,20 +38,20 @@ preserved at the tag `conduit-container-v1.0.0`.
 ### .github/workflows
 
 - [x] A `.github` directory containing a `workflows` folder for all automation workflows
-- [ ] A `deployment.yaml` performing the deployment to the cloud VM over SSH:
-  - [ ] The deployment step opens an SSH connection to the server
+- [x] A `deployment.yaml` performing the deployment to the cloud VM over SSH:
+  - [x] The deployment step opens an SSH connection to the server
   - [x] The application is no longer built on the VM (images are built on the runner
         and pushed to GHCR)
-  - [ ] The containerized application is started with `docker compose` in detached mode
-  - [ ] The workflow fails when something goes wrong
+  - [x] The containerized application is started with `docker compose` in detached mode
+  - [x] The workflow fails when something goes wrong (commands chained with `&&`,
+        the remote exit code ends the step)
 
 ### README.md
 
 - [x] Table of contents
 - [x] Description of the repository: contents and purpose
 - [x] "Quickstart" section with prerequisites and short instructions
-- [ ] "Usage" section covering configuration and how to modify it
-      (deployment and required secrets still missing)
+- [x] "Usage" section covering configuration and how to modify it
 
 ## 2. Documentation
 
