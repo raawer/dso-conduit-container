@@ -96,6 +96,21 @@ jobs:
           scp docker-compose.yaml \
             "${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:${DEPLOY_PATH}/docker-compose.yaml"
 
+      - name: Write the environment file on the VM
+        run: |
+          ssh "${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}" \
+            "umask 077 && cat > ${DEPLOY_PATH}/.env" <<'EOF'
+          SECRET_KEY=${{ secrets.DJANGO_SECRET_KEY }}
+          POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}
+          POSTGRES_DB=${{ vars.POSTGRES_DB }}
+          POSTGRES_USER=${{ vars.POSTGRES_USER }}
+          POSTGRES_HOST=${{ vars.POSTGRES_HOST }}
+          POSTGRES_PORT=${{ vars.POSTGRES_PORT }}
+          DEBUG=${{ vars.DEBUG }}
+          DJANGO_LOG_LEVEL=${{ vars.DJANGO_LOG_LEVEL }}
+          ALLOWED_HOSTS=${{ vars.ALLOWED_HOSTS }}
+          EOF
+
       - name: Log in to GHCR on the VM
         run: |
           echo "${{ secrets.GITHUB_TOKEN }}" | \
