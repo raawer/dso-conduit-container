@@ -46,13 +46,25 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
+      - name: Compute frontend image tags
+        id: meta-frontend
+        uses: docker/metadata-action@v6
+        with:
+          images: ghcr.io/${{ github.repository_owner }}/conduit-frontend
+          tags: |
+            type=sha,format=long,prefix=
+            type=ref,event=branch
+            type=raw,value=latest,enable={{is_default_branch}}
+
       - name: Build and push the frontend image
-        run: |
-          docker build \
-            -t "ghcr.io/${{ github.repository_owner }}/conduit-frontend:${{ github.sha }}" \
-            -t "ghcr.io/${{ github.repository_owner }}/conduit-frontend:latest" \
-            ./frontend
-          docker push --all-tags "ghcr.io/${{ github.repository_owner }}/conduit-frontend"
+        uses: docker/build-push-action@v7
+        with:
+          context: ./frontend
+          push: true
+          tags: ${{ steps.meta-frontend.outputs.tags }}
+          labels: ${{ steps.meta-frontend.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
   deploy:
     needs: build
