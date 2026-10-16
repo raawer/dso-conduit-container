@@ -116,6 +116,8 @@ jobs:
           envs: SECRET_KEY,POSTGRES_PASSWORD,POSTGRES_DB,POSTGRES_USER,POSTGRES_HOST,POSTGRES_PORT,DEBUG,DJANGO_LOG_LEVEL,ALLOWED_HOSTS,IMAGE_TAG,GHCR_USER,GHCR_TOKEN
           script: |
             set -e
+            export DOCKER_CONFIG="$(mktemp -d)"
+            trap 'rm -rf "$DOCKER_CONFIG"' EXIT
             cd ${{ env.DEPLOY_PATH }}
             umask 077
             cat > .env <<EOF
@@ -133,13 +135,3 @@ jobs:
             docker compose pull
             docker compose up -d --no-build
             docker image prune -f
-
-      - name: Log out from GHCR on the VM
-        if: always()
-        uses: appleboy/ssh-action@v1.2.5
-        with:
-          host: ${{ secrets.SSH_HOST }}
-          username: ${{ secrets.SSH_USER }}
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
-          fingerprint: ${{ secrets.SSH_FINGERPRINT }}
-          script: docker logout ghcr.io
