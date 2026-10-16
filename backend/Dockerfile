@@ -4,7 +4,6 @@ COPY requirements.txt .
 RUN pip install --prefix=/install -r requirements.txt
 
 FROM python:3.5-slim
-LABEL org.opencontainers.image.source=https://github.com/raawer/dso-conduit-container
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1
 RUN groupadd --gid 10001 appgroup \
