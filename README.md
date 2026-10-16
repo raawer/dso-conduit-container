@@ -171,9 +171,12 @@ so a broken build never reaches the server.
 | `deploy` | GitHub runner, over SSH | Copies `docker-compose.yaml` to the VM with `appleboy/scp-action`, then runs the deployment with `appleboy/ssh-action`: it writes `.env`, logs in to GHCR, pulls the images of this commit, starts them in detached mode and removes unused images. |
 
 The remote script starts with `set -e`, so the first failing command ends the
-deployment, the exit code travels back and the workflow is marked as failed. The
-registry logout runs in its own step with `if: always()`, so no credentials are left in
-`~/.docker/config.json` when a deployment fails.
+deployment, the exit code travels back and the workflow is marked as failed.
+
+Before logging in to the registry, the script points `DOCKER_CONFIG` at a temporary
+directory and removes it again through a `trap` on exit. The credentials therefore never
+reach `~/.docker/config.json` on the VM, not even when the deployment fails halfway
+through, and no explicit logout is needed.
 
 ### Repository secrets and variables
 
@@ -202,8 +205,7 @@ The deployment job checks that the two mandatory secrets are set before it touch
 server, so a missing secret fails the run instead of leaving a broken `.env` behind.
 
 No registry credentials are stored: the workflow authenticates with the `GITHUB_TOKEN`
-that GitHub issues per run, passes it to the VM over standard input and logs out again
-after the deployment.
+that GitHub issues per run and passes it to the VM over standard input.
 
 ### Prerequisites on the VM
 
@@ -233,9 +235,10 @@ containers on the VM run exactly the images built from that commit:
 ssh <user>@<host> "cd deploy/conduit && docker compose ps"
 ```
 
-The `IMAGE` column shows the deployed tag. After each deployment the VM runs `docker image prune -f`, which removes images that
-lost their tag. Images still tagged with a commit SHA are kept, so a rollback does not
-need to download them again.
+The `IMAGE` column shows the deployed tag. After each deployment the VM removes orphaned containers (`--remove-orphans`) and
+unused images older than a week (`docker image prune -af --filter "until=168h"`). That
+keeps disk usage bounded. Rolling back to a state older than that still works, the image
+is simply pulled from the registry again.
 
 To roll back, run Compose on the VM with the
 `IMAGE_TAG` of an earlier commit:
