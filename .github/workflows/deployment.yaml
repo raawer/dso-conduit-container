@@ -78,61 +78,68 @@ jobs:
       - name: Check that required secrets are present
         run: |
           test -n "${{ secrets.SECRET_KEY }}" || { echo "SECRET_KEY is not set"; exit 1; }
-          test -n "${{ secrets.POSTGRES_PASSWORD }}" || { echo "POSTGRES_PASSWORD is not set"; exit 1; }
-
+          test -n "${{ secrets.POSTGRES_PASSWORD }}" || { echo "POSTGRES_PASSWORD is not set"; exit1; }
+          test -n "${{ secrets.SSH_FINGERPRINT }}" || { echo "SSH_FINGERPRINT is not set"; exit 1; }
       - name: Check out the repository
         uses: actions/checkout@v7
 
-      - name: Set up the SSH agent
-        uses: webfactory/ssh-agent@v0.10.0
-        with:
-          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
-
-      - name: Trust the host key
-        run: |
-          mkdir -p ~/.ssh
-          chmod 700 ~/.ssh
-          echo "${{ secrets.SSH_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
-
       - name: Copy the compose file to the VM
-        run: |
-          ssh "${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}" \
-            "mkdir -p ${DEPLOY_PATH}"
-          scp docker-compose.yaml \
-            "${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:${DEPLOY_PATH}/docker-compose.yaml"
+        uses: appleboy/scp-action@v1.0.0
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          fingerprint: ${{ secrets.SSH_FINGERPRINT }}
+          source: docker-compose.yaml
+          target: ${{ env.DEPLOY_PATH }}
 
-      - name: Write the environment file on the VM
-        run: |
-          ssh "${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}" \
-            "umask 077 && cat > ${DEPLOY_PATH}/.env" <<'EOF'
-          SECRET_KEY=${{ secrets.SECRET_KEY }}
-          POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}
-          POSTGRES_DB=${{ vars.POSTGRES_DB }}
-          POSTGRES_USER=${{ vars.POSTGRES_USER }}
-          POSTGRES_HOST=${{ vars.POSTGRES_HOST }}
-          POSTGRES_PORT=${{ vars.POSTGRES_PORT }}
-          DEBUG=${{ vars.DEBUG }}
-          DJANGO_LOG_LEVEL=${{ vars.DJANGO_LOG_LEVEL }}
-          ALLOWED_HOSTS=${{ vars.ALLOWED_HOSTS }}
-          EOF
-
-
-      - name: Log in to GHCR on the VM
-        run: |
-          echo "${{ secrets.GITHUB_TOKEN }}" | \
-            ssh "${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}" \
-            "docker login ghcr.io -u ${{ github.actor }} --password-stdin"
-
-      - name: Pull the images and start the stack
-        run: |
-          ssh "${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}" \
-            "cd ${DEPLOY_PATH} \
-             && export IMAGE_TAG=${{ github.sha }} \
-             && docker compose pull \
-             && docker compose up -d --no-build"
+      - name: Deploy on the VM
+        uses: appleboy/ssh-action@v1.2.5
+        env:
+          SECRET_KEY: ${{ secrets.SECRET_KEY }}
+          POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+          POSTGRES_DB: ${{ vars.POSTGRES_DB }}
+          POSTGRES_USER: ${{ vars.POSTGRES_USER }}
+          POSTGRES_HOST: ${{ vars.POSTGRES_HOST }}
+          POSTGRES_PORT: ${{ vars.POSTGRES_PORT }}
+          DEBUG: ${{ vars.DEBUG }}
+          DJANGO_LOG_LEVEL: ${{ vars.DJANGO_LOG_LEVEL }}
+          ALLOWED_HOSTS: ${{ vars.ALLOWED_HOSTS }}
+          IMAGE_TAG: ${{ github.sha }}
+          GHCR_USER: ${{ github.actor }}
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          fingerprint: ${{ secrets.SSH_FINGERPRINT }}
+          envs: SECRET_KEY,POSTGRES_PASSWORD,POSTGRES_DB,POSTGRES_USER,POSTGRES_HOST,POSTGRES_PORT,DEBUG,DJANGO_LOG_LEVEL,ALLOWED_HOSTS,IMAGE_TAG,GHCR_USER,GHCR_TOKEN
+          script: |
+            set -e
+            cd ${{ env.DEPLOY_PATH }}
+            umask 077
+            cat > .env <<EOF
+            SECRET_KEY=${SECRET_KEY}
+            POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+            POSTGRES_DB=${POSTGRES_DB}
+            POSTGRES_USER=${POSTGRES_USER}
+            POSTGRES_HOST=${POSTGRES_HOST}
+            POSTGRES_PORT=${POSTGRES_PORT}
+            DEBUG=${DEBUG}
+            DJANGO_LOG_LEVEL=${DJANGO_LOG_LEVEL}
+            ALLOWED_HOSTS=${ALLOWED_HOSTS}
+            EOF
+            echo "${GHCR_TOKEN}" | docker login ghcr.io -u "${GHCR_USER}" --password-stdin
+            docker compose pull
+            docker compose up -d --no-build
+            docker image prune -f
 
       - name: Log out from GHCR on the VM
         if: always()
-        run: |
-          ssh "${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}" \
-            "docker logout ghcr.io"
+        uses: appleboy/ssh-action@v1.2.5
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          fingerprint: ${{ secrets.SSH_FINGERPRINT }}
+          script: docker logout ghcr.io
