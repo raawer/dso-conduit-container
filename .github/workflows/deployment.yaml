@@ -133,5 +133,5 @@ jobs:
             EOF
             echo "${GHCR_TOKEN}" | docker login ghcr.io -u "${GHCR_USER}" --password-stdin
             docker compose pull
-            docker compose up -d --no-build
-            docker image prune -f
+            docker compose up -d --no-build --remove-orphans
+            docker image prune -af --filter "until=168h"
