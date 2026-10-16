@@ -32,16 +32,19 @@ jobs:
             type=ref,event=branch
             type=raw,value=latest,enable={{is_default_branch}}
 
-      - name: Show the computed tags
-        run: echo "${{ steps.meta-backend.outputs.tags }}"
+      - name: Set up Buildx
+        uses: docker/setup-buildx-action@v4
 
       - name: Build and push the backend image
-        run: |
-          docker build \
-            -t "ghcr.io/${{ github.repository_owner }}/conduit-backend:${{ github.sha }}" \
-            -t "ghcr.io/${{ github.repository_owner }}/conduit-backend:latest" \
-            ./backend
-          docker push --all-tags "ghcr.io/${{ github.repository_owner }}/conduit-backend"
+        uses: docker/build-push-action@v7
+        with:
+          context: ./backend
+          platforms: linux/amd64
+          push: true
+          tags: ${{ steps.meta-backend.outputs.tags }}
+          labels: ${{ steps.meta-backend.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
       - name: Build and push the frontend image
         run: |
