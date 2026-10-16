@@ -75,6 +75,11 @@ jobs:
     env:
       DEPLOY_PATH: deploy/conduit
     steps:
+      - name: Check that required secrets are present
+        run: |
+          test -n "${{ secrets.SECRET_KEY }}" || { echo "SECRET_KEY is not set"; exit 1; }
+          test -n "${{ secrets.POSTGRES_PASSWORD }}" || { echo "POSTGRES_PASSWORD is not set"; exit 1; }
+
       - name: Check out the repository
         uses: actions/checkout@v7
 
@@ -110,6 +115,7 @@ jobs:
           DJANGO_LOG_LEVEL=${{ vars.DJANGO_LOG_LEVEL }}
           ALLOWED_HOSTS=${{ vars.ALLOWED_HOSTS }}
           EOF
+
 
       - name: Log in to GHCR on the VM
         run: |
