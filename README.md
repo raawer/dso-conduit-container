@@ -14,7 +14,7 @@ This repository contains the Conduit application, an Angular frontend and a Djan
   - [Customization](#customization)
 - [Deployment](#deployment)
   - [How a deployment runs](#how-a-deployment-runs)
-  - [Repository secrets](#repository-secrets)
+  - [Repository secrets and variables](#repository-secrets-and-variables)
   - [Prerequisites on the VM](#prerequisites-on-the-vm)
   - [Triggering a deployment](#triggering-a-deployment)
 
@@ -168,19 +168,38 @@ so a broken build never reaches the server.
 | Job | Runs on | What it does |
 | --- | ------- | ------------ |
 | `build`  | GitHub runner | Builds both images with the official Docker actions (`login-action`, `metadata-action`, `setup-buildx-action`, `build-push-action`) and pushes them to GHCR. The application is never built on the VM. |
-| `deploy` | GitHub runner, over SSH | Copies `docker-compose.yaml` to the VM, logs in to GHCR there, pulls the images of this commit and starts them in detached mode. |
+| `deploy` | GitHub runner, over SSH | Copies `docker-compose.yaml` to the VM with `appleboy/scp-action`, then runs the deployment with `appleboy/ssh-action`: it writes `.env`, logs in to GHCR, pulls the images of this commit, starts them in detached mode and removes unused images. |
 
-Every command runs over SSH and is chained with `&&`, so the first failure ends the
-step, the exit code travels back and the workflow is marked as failed.
+The remote script starts with `set -e`, so the first failing command ends the
+deployment, the exit code travels back and the workflow is marked as failed. The
+registry logout runs in its own step with `if: always()`, so no credentials are left in
+`~/.docker/config.json` when a deployment fails.
 
-### Repository secrets
+### Repository secrets and variables
+
+The runtime configuration of the deployed system lives in GitHub, not on the server.
+The deployment writes it into `.env` next to the compose file on every run.
+
+Secrets (*Settings → Secrets and variables → Actions → Secrets*):
 
 | Secret | Content |
 | ------ | ------- |
 | `SSH_PRIVATE_KEY` | Private key of a key pair created for deployments only, including the `BEGIN`/`END` lines. |
 | `SSH_HOST` | Address of the target VM. |
 | `SSH_USER` | User the deployment connects as. |
-| `SSH_KNOWN_HOSTS` | Host key of the VM, obtained with `ssh-keyscan`. The workflow verifies the host key instead of disabling the check. |
+| `SSH_FINGERPRINT` | SHA256 fingerprint of the VM's host key (`ssh-keyscan -t ed25519 <host> \| ssh-keygen -lf -`). Without it the SSH actions would accept any host key, so the workflow checks that it is set. |
+| `SECRET_KEY` | Django secret key of the deployed instance. |
+| `POSTGRES_PASSWORD` | Password of the database user. Changing it here does not change it in an existing database; the volume keeps the password set on first start. |
+
+Variables (*same page, tab Variables*), readable in the logs and therefore only for
+non-sensitive settings: `POSTGRES_DB`, `POSTGRES_USER`, `POSTGRES_HOST`,
+`POSTGRES_PORT`, `DEBUG`, `DJANGO_LOG_LEVEL`, `ALLOWED_HOSTS`.
+
+`ALLOWED_HOSTS` has to contain the address of the VM, otherwise Django answers every
+request with `400`.
+
+The deployment job checks that the two mandatory secrets are set before it touches the
+server, so a missing secret fails the run instead of leaving a broken `.env` behind.
 
 No registry credentials are stored: the workflow authenticates with the `GITHUB_TOKEN`
 that GitHub issues per run, passes it to the VM over standard input and logs out again
@@ -190,13 +209,18 @@ after the deployment.
 
 - Docker Engine with the Compose plugin
 - The public key of the deployment key pair in `~/.ssh/authorized_keys`
-- A directory `~/deploy/conduit` containing a `.env` file with the variables listed
-  under [Configuration](#configuration)
+- A directory `~/deploy/conduit`; the pipeline creates it if it does not exist
 
-The `.env` stays on the server and is never transferred: the only file the pipeline
-copies is `docker-compose.yaml`. Keeping it on the VM means the secrets of the running
-system are not stored in GitHub; the trade-off is that the file has to be maintained
-there by hand.
+The pipeline writes both `docker-compose.yaml` and `.env` into that directory, so the
+server holds no configuration of its own. Editing `.env` on the VM by hand has no
+lasting effect: the next deployment overwrites it. The values are piped in over
+standard input and the file is created with `umask 077`, so it is never world-readable
+and the values appear neither on the runner's disk nor in the process list of the VM.
+
+The trade-off of this approach is that the secrets of the running system are stored in
+GitHub, where anyone with write access to the repository could read them through a
+workflow. A production setup would keep them in a secret manager and give the pipeline
+a short-lived read token instead.
 
 ### Triggering a deployment
 
@@ -209,7 +233,11 @@ containers on the VM run exactly the images built from that commit:
 ssh <user>@<host> "cd deploy/conduit && docker compose ps"
 ```
 
-The `IMAGE` column shows the deployed tag. To roll back, run Compose on the VM with the
+The `IMAGE` column shows the deployed tag. After each deployment the VM runs `docker image prune -f`, which removes images that
+lost their tag. Images still tagged with a commit SHA are kept, so a rollback does not
+need to download them again.
+
+To roll back, run Compose on the VM with the
 `IMAGE_TAG` of an earlier commit:
 
 ```bash
