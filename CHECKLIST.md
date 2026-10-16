@@ -43,8 +43,9 @@ preserved at the tag `conduit-container-v1.0.0`.
   - [x] The application is no longer built on the VM (images are built on the runner
         and pushed to GHCR)
   - [x] The containerized application is started with `docker compose` in detached mode
-  - [x] The workflow fails when something goes wrong (commands chained with `&&`,
-        the remote exit code ends the step)
+  - [x] The workflow fails when something goes wrong (the remote script runs with
+        `set -e`, the remote exit code ends the step; verified with a wrong host
+        fingerprint)
 
 ### README.md
 
