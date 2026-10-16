@@ -22,6 +22,19 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Compute backend image tags
+        id: meta-backend
+        uses: docker/metadata-action@v6
+        with:
+          images: ghcr.io/${{ github.repository_owner }}/conduit-backend
+          tags: |
+            type=sha,format=long,prefix=
+            type=ref,event=branch
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - name: Show the computed tags
+        run: echo "${{ steps.meta-backend.outputs.tags }}"
+
       - name: Build and push the backend image
         run: |
           docker build \
