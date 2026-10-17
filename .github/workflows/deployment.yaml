@@ -1,0 +1,137 @@
+name: Deployment
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  build:
+    permissions:
+      contents: read
+      packages: write
+    runs-on: ubuntu-24.04   # pinned; ubuntu-latest moves to 26.04 on 2026-10-19
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v7
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Compute backend image tags
+        id: meta-backend
+        uses: docker/metadata-action@v6
+        with:
+          images: ghcr.io/${{ github.repository_owner }}/conduit-backend
+          tags: |
+            type=sha,format=long,prefix=
+            type=ref,event=branch
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - name: Set up Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Build and push the backend image
+        uses: docker/build-push-action@v7
+        with:
+          context: ./backend
+          platforms: linux/amd64
+          push: true
+          tags: ${{ steps.meta-backend.outputs.tags }}
+          labels: ${{ steps.meta-backend.outputs.labels }}
+          cache-from: type=gha,scope=backend
+          cache-to: type=gha,mode=max,scope=backend
+
+      - name: Compute frontend image tags
+        id: meta-frontend
+        uses: docker/metadata-action@v6
+        with:
+          images: ghcr.io/${{ github.repository_owner }}/conduit-frontend
+          tags: |
+            type=sha,format=long,prefix=
+            type=ref,event=branch
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - name: Build and push the frontend image
+        uses: docker/build-push-action@v7
+        with:
+          context: ./frontend
+          push: true
+          tags: ${{ steps.meta-frontend.outputs.tags }}
+          labels: ${{ steps.meta-frontend.outputs.labels }}
+          cache-from: type=gha,scope=frontend
+          cache-to: type=gha,mode=max,scope=frontend
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-24.04   # pinned; ubuntu-latest moves to 26.04 on 2026-10-19
+    permissions:
+      contents: read
+      packages: read
+    env:
+      DEPLOY_PATH: deploy/conduit
+    steps:
+      - name: Check that required secrets are present
+        run: |
+          test -n "${{ secrets.SECRET_KEY }}" || { echo "SECRET_KEY is not set"; exit 1; }
+          test -n "${{ secrets.POSTGRES_PASSWORD }}" || { echo "POSTGRES_PASSWORD is not set"; exit 1; }
+          test -n "${{ secrets.SSH_FINGERPRINT }}" || { echo "SSH_FINGERPRINT is not set"; exit 1; }
+      - name: Check out the repository
+        uses: actions/checkout@v7
+
+      - name: Copy the compose file to the VM
+        uses: appleboy/scp-action@v1.0.0
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          fingerprint: ${{ secrets.SSH_FINGERPRINT }}
+          source: docker-compose.yaml
+          target: ${{ env.DEPLOY_PATH }}
+
+      - name: Deploy on the VM
+        uses: appleboy/ssh-action@v1.2.5
+        env:
+          SECRET_KEY: ${{ secrets.SECRET_KEY }}
+          POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+          POSTGRES_DB: ${{ vars.POSTGRES_DB }}
+          POSTGRES_USER: ${{ vars.POSTGRES_USER }}
+          POSTGRES_HOST: ${{ vars.POSTGRES_HOST }}
+          POSTGRES_PORT: ${{ vars.POSTGRES_PORT }}
+          DEBUG: ${{ vars.DEBUG }}
+          DJANGO_LOG_LEVEL: ${{ vars.DJANGO_LOG_LEVEL }}
+          ALLOWED_HOSTS: ${{ vars.ALLOWED_HOSTS }}
+          IMAGE_TAG: ${{ github.sha }}
+          GHCR_USER: ${{ github.actor }}
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          fingerprint: ${{ secrets.SSH_FINGERPRINT }}
+          envs: SECRET_KEY,POSTGRES_PASSWORD,POSTGRES_DB,POSTGRES_USER,POSTGRES_HOST,POSTGRES_PORT,DEBUG,DJANGO_LOG_LEVEL,ALLOWED_HOSTS,IMAGE_TAG,GHCR_USER,GHCR_TOKEN
+          script: |
+            set -e
+            export DOCKER_CONFIG="$(mktemp -d)"
+            trap 'rm -rf "$DOCKER_CONFIG"' EXIT
+            cd ${{ env.DEPLOY_PATH }}
+            umask 077
+            cat > .env <<EOF
+            SECRET_KEY=${SECRET_KEY}
+            POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+            POSTGRES_DB=${POSTGRES_DB}
+            POSTGRES_USER=${POSTGRES_USER}
+            POSTGRES_HOST=${POSTGRES_HOST}
+            POSTGRES_PORT=${POSTGRES_PORT}
+            DEBUG=${DEBUG}
+            DJANGO_LOG_LEVEL=${DJANGO_LOG_LEVEL}
+            ALLOWED_HOSTS=${ALLOWED_HOSTS}
+            EOF
+            echo "${GHCR_TOKEN}" | docker login ghcr.io -u "${GHCR_USER}" --password-stdin
+            docker compose pull
+            docker compose up -d --no-build --remove-orphans
+            docker image prune -af --filter "until=168h"

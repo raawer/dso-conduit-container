@@ -18,7 +18,7 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    image: conduit-backend:1.0.0
+    image: ghcr.io/${GHCR_OWNER:-raawer}/conduit-backend:${IMAGE_TAG:-latest}
     platform: linux/amd64
     env_file: ./.env
     depends_on:
@@ -30,7 +30,7 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
-    image: conduit-frontend:1.0.0
+    image: ghcr.io/${GHCR_OWNER:-raawer}/conduit-frontend:${IMAGE_TAG:-latest}
     depends_on:
       - backend
     ports:
