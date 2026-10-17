@@ -78,7 +78,7 @@ jobs:
       - name: Check that required secrets are present
         run: |
           test -n "${{ secrets.SECRET_KEY }}" || { echo "SECRET_KEY is not set"; exit 1; }
-          test -n "${{ secrets.POSTGRES_PASSWORD }}" || { echo "POSTGRES_PASSWORD is not set"; exit1; }
+          test -n "${{ secrets.POSTGRES_PASSWORD }}" || { echo "POSTGRES_PASSWORD is not set"; exit 1; }
           test -n "${{ secrets.SSH_FINGERPRINT }}" || { echo "SSH_FINGERPRINT is not set"; exit 1; }
       - name: Check out the repository
         uses: actions/checkout@v7
